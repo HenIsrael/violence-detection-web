@@ -2,21 +2,44 @@ import cv2
 import numpy as np
 from tensorflow.keras.models import load_model
 import os
+import requests
 from typing import Dict, Any
+from pathlib import Path
 
 class ViolenceDetector:
     def __init__(self):
         self.frame_size = (224, 224)  # Same as your SIZE parameter
         
-        model_path = os.path.join(os.path.dirname(__file__), 'weights', 'LRCN.h5')
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(
-                f"LRCN model not found at {model_path}. "
-                "Please copy LRCN.h5 to the models/weights directory."
-            )
+        # Get model URL from environment variable
+        self.model_url = os.getenv('MODEL_URL')
+        if not self.model_url:
+            raise ValueError("MODEL_URL environment variable not set")
+        
+        # Setup model paths
+        self.weights_dir = os.path.join(os.path.dirname(__file__), 'weights')
+        self.model_path = os.path.join(self.weights_dir, 'LRCN.h5')
+        
+        # Ensure weights directory exists
+        os.makedirs(self.weights_dir, exist_ok=True)
+        
+        # Download model if not exists
+        if not os.path.exists(self.model_path):
+            self._download_model()
         
         # Load the model
-        self.model = load_model(model_path)
+        self.model = load_model(self.model_path)
+        
+    def _download_model(self):
+        """Download the model from the URL specified in environment variables."""
+        print(f"Downloading model from {self.model_url}")
+        response = requests.get(self.model_url, stream=True)
+        response.raise_for_status()
+        
+        # Save the model
+        with open(self.model_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        print(f"Model downloaded successfully to {self.model_path}")
         
     def preprocess_video(self, video_file_path: str, sequence_length: int = 20) -> np.ndarray:
         """
