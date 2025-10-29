@@ -80,7 +80,9 @@ async def upload_video(file: UploadFile = File(...)):
         client = Client("henIsrael/violence-detection")
         
         print("Sending video for prediction...")
-        result = client.predict({"video": handle_file(temp_file_path), "subtitles": None}, api_name="/predict")
+
+        job = client.submit({"video": handle_file(temp_file_path), "subtitles": None}, api_name="/predict")
+        result = job.result(timeout=300)
         print(f"Prediction result: {result}")
 
         # The result should be a dictionary with the prediction
