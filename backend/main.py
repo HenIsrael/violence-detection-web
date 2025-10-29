@@ -1,35 +1,25 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import tempfile
-import os
-import shutil
-from models.violence_detector import ViolenceDetector
-from dotenv import load_dotenv
+from gradio_client import Client, handle_file
+import tempfile, os, shutil, time
 
-# Load environment variables
-load_dotenv()
-
-# Environment variables
-ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
-MAX_UPLOAD_SIZE = int(os.getenv("MAX_UPLOAD_SIZE", 50000000))  # 50MB default
-
-# Initialize the violence detector
-detector = ViolenceDetector()
-
-# Response models
+# -------------------------------
+# Response model
+# -------------------------------
 class AnalysisResult(BaseModel):
-    predicted_class: int  
+    predicted_class: int
     confidence: float
     frames_analyzed: int
 
+# -------------------------------
+# FastAPI setup
+# -------------------------------
 app = FastAPI()
 
-# CORS configuration
 origins = [
-    "http://localhost:3000",  # Local development
-    "https://vd-web.vercel.app",  # Production frontend (we'll update this with actual URL)
+    "http://localhost:3000",
+    "https://vd-web.vercel.app",
 ]
 
 app.add_middleware(
@@ -40,58 +30,74 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Create temp directories for uploads and results
+# -------------------------------
+# Temporary upload directory
+# -------------------------------
 UPLOAD_DIR = os.path.join(tempfile.gettempdir(), "violence_detection_uploads")
-RESULT_DIR = os.path.join(tempfile.gettempdir(), "violence_detection_results")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(RESULT_DIR, exist_ok=True)
 
+# -------------------------------
+# Routes
+# -------------------------------
 @app.get("/")
 def read_root():
     return {"message": "Violence Detection API"}
 
 @app.post("/upload", response_model=AnalysisResult)
 async def upload_video(file: UploadFile = File(...)):
-    temp_file_path = None
+
+    if not file.content_type.startswith("video/"):
+        raise HTTPException(status_code=400, detail="Please upload a video file")
+
     try:
-        # Validate file type
-        if not file.content_type.startswith('video/'):
-            raise HTTPException(status_code=400, detail="Please upload a video file")
-            
-        # Check file size
-        file_size = 0
-        while contents := await file.read(1024 * 1024):
-            file_size += len(contents)
-            if file_size > MAX_UPLOAD_SIZE:
-                raise HTTPException(status_code=413, detail="File too large. Maximum size is 50MB.")
-        await file.seek(0)
-        
-        # Save the uploaded file temporarily
+        print(f"\n=== Starting new video upload ===")
+        print(f"File name: {file.filename}")
+
+        # Save uploaded video temporarily
         temp_file_path = os.path.join(UPLOAD_DIR, f"upload_{file.filename}")
         with open(temp_file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+
+        print(f"File saved: {temp_file_path}")
+
+        # -------------------------------
+        # Send to Hugging Face Space using gradio_client
+        # -------------------------------
+        print("\n=== Sending to Hugging Face Space ===")
         
-        # Process video with 20 frames
-        try:
-            # Preprocess video frames
-            frames = detector.preprocess_video(temp_file_path, sequence_length=20)
-            # Get prediction
-            result = detector.detect(frames)
-            
-            return AnalysisResult(
-                predicted_class=result["predicted_class"],
-                confidence=result["confidence"],
-                frames_analyzed=result["frames_analyzed"]
+        file_size_mb = os.path.getsize(temp_file_path) / 1e6
+        print(f"File size: {file_size_mb:.1f}MB")
+        
+        # If file is too large, suggest using a smaller file
+        if file_size_mb > 10:
+            raise HTTPException(
+                status_code=413, 
+                detail=f"File too large ({file_size_mb:.1f}MB). Please use a file smaller than 10MB."
             )
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
         
-    except HTTPException as http_exc:
-        raise http_exc
+        # Use gradio_client - the official way to interact with Gradio Spaces
+        print("Calling Hugging Face Space via gradio_client...")
+        client = Client("henIsrael/violence-detection")
+        
+        print("Sending video for prediction...")
+        result = client.predict({"video": handle_file(temp_file_path), "subtitles": None}, api_name="/predict")
+        print(f"Prediction result: {result}")
+
+        # The result should be a dictionary with the prediction
+        if isinstance(result, dict):
+            return AnalysisResult(**result)
+        elif isinstance(result, list) and len(result) > 0:
+            return AnalysisResult(**result[0])
+        else:
+            raise HTTPException(status_code=500, detail=f"Unexpected result format: {result}")
+
     except Exception as e:
+        print(f"\n=== Error during prediction ===")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error message: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-    
+
     finally:
-        # Clean up the uploaded file
+        # Cleanup uploaded file
         if temp_file_path and os.path.exists(temp_file_path):
             os.remove(temp_file_path)
