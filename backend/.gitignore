@@ -10,6 +10,10 @@ venv/
 .env.*
 !.env.example
 
+# Models 
+backend/models/
+*.h5
+
 # Test files
 test_videos/
 tests/
