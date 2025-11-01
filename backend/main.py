@@ -46,6 +46,10 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 def read_root():
     return {"message": "Violence Detection API"}
 
+@app.get("/health")
+def health_check():
+    return {"status": "healthy", "service": "violence-detection-api"}
+
 @app.post("/upload", response_model=AnalysisResult)
 async def upload_video(file: UploadFile = File(...)):
 
