@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from pydantic import BaseModel
 from gradio_client import Client, handle_file
 import tempfile, os, shutil, time
@@ -49,6 +50,10 @@ def read_root():
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "service": "violence-detection-api"}
+
+@app.head("/health")
+def health_check_head():
+    return Response(status_code=200)
 
 @app.post("/upload", response_model=AnalysisResult)
 async def upload_video(file: UploadFile = File(...)):
