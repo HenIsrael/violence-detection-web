@@ -47,10 +47,15 @@ Frontend (React) → Backend (FastAPI) → Hugging Face Space (Gradio)
 
 4. Start the server:
    ```bash
-   uvicorn main:app --reload
+   python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
    ```
 
    Backend will run on `http://localhost:8000`
+   
+   **Optional:** Create a `.env` file in the `backend` folder for local testing:
+   ```
+   GRADIO_URL=http://127.0.0.1:7860
+   ```
 
 ### Frontend Setup
 
@@ -90,7 +95,7 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions.
 
 Upload a video file through the web interface. The app will:
 1. Send the video to the backend
-2. Backend forwards it to Hugging Face Space
+2. Backend forwards it to Hugging Face Space (or local Gradio app)
 3. ML model analyzes the video
 4. Results are returned and displayed
 
@@ -98,15 +103,44 @@ Upload a video file through the web interface. The app will:
 
 ```json
 {
-  "predicted_class": 1,
+  "predicted_class": "VIOLENCE",
   "confidence": 0.9574,
   "frames_analyzed": 20
 }
 ```
 
-- `predicted_class`: 0 = Non-violent, 1 = Violent
+- `predicted_class`: `"NON_VIOLENCE"` or `"VIOLENCE"` (string format)
 - `confidence`: Confidence score (0-1)
 - `frames_analyzed`: Number of video frames processed
+
+### Local Testing with Gradio App
+
+To test locally with your own Gradio app (instead of Hugging Face Space):
+
+1. **Start the local Gradio app** (Terminal 1):
+   ```bash
+   cd violence-detection
+   python app.py
+   ```
+   Wait for "Model loaded successfully!" and server to start on `http://127.0.0.1:7860`
+
+2. **Start the backend with GRADIO_URL** (Terminal 2):
+   ```bash
+   cd backend
+   # Windows (Git Bash)
+   export GRADIO_URL="http://127.0.0.1:7860"
+   # Windows (PowerShell)
+   # $env:GRADIO_URL="http://127.0.0.1:7860"
+   python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+3. **Start the frontend** (Terminal 3):
+   ```bash
+   cd frontend
+   npm start
+   ```
+
+**Note:** The backend automatically detects if `GRADIO_URL` is set. If not set, it defaults to the Hugging Face Space (`henIsrael/violence-detection`).
 
 ## 📁 Project Structure
 
@@ -130,6 +164,9 @@ vdWeb/
 
 - Port: 8000 (default) or set via `PORT` environment variable
 - CORS: Configured for `localhost:3000` and production URLs
+- **GRADIO_URL**: Set to `http://127.0.0.1:7860` for local Gradio app testing
+  - If not set, defaults to Hugging Face Space: `henIsrael/violence-detection`
+  - Can be set via environment variable or `.env` file (using `python-dotenv`)
 
 ### Frontend
 

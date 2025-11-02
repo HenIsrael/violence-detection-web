@@ -3,13 +3,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
 from gradio_client import Client, handle_file
+from dotenv import load_dotenv
 import tempfile, os, shutil, time
+
+# Load environment variables from .env file if it exists
+load_dotenv()
 
 # -------------------------------
 # Response model
 # -------------------------------
 class AnalysisResult(BaseModel):
-    predicted_class: int
+    predicted_class: str  # Now returns "NON_VIOLENCE" or "VIOLENCE"
     confidence: float
     frames_analyzed: int
 
@@ -88,8 +92,10 @@ async def upload_video(file: UploadFile = File(...)):
             )
         
         # Use gradio_client - the official way to interact with Gradio Spaces
-        print("Calling Hugging Face Space via gradio_client...")
-        client = Client("henIsrael/violence-detection")
+        # Use local Gradio app if GRADIO_URL env var is set, otherwise use Hugging Face Space
+        gradio_url = os.getenv("GRADIO_URL", "henIsrael/violence-detection")
+        print(f"Calling Gradio via gradio_client at: {gradio_url}")
+        client = Client(gradio_url)
         
         print("Sending video for prediction...")
 
