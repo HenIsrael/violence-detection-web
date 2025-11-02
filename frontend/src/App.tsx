@@ -78,7 +78,12 @@ function App() {
         {result && (
           <div className="result-container">
             <h2>Analysis Result</h2>
-            <pre>{JSON.stringify(result, null, 2)}</pre>
+            <pre>{JSON.stringify({
+              ...result,
+              predicted_class: result.predicted_class === 'VIOLENCE' ? 'Violence' : 
+                               result.predicted_class === 'NON_VIOLENCE' ? 'No Violence' : 
+                               result.predicted_class
+            }, null, 2)}</pre>
           </div>
         )}
       </header>
