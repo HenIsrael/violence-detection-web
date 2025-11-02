@@ -1,6 +1,6 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "build",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- frontend/ || exit 1"
+  "ignoreCommand": "git diff HEAD^ HEAD --quiet -- frontend/ && exit 1 || exit 0"
 }
 
