@@ -63,13 +63,27 @@ button:hover:not(:disabled) {
   max-width: 80%;
 }
 
-.result-container pre {
-  text-align: left;
-  font-size: 0.9rem;
+.result-content {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
   background-color: rgba(0, 0, 0, 0.3);
-  padding: 15px;
   border-radius: 5px;
-  overflow-x: auto;
+}
+
+.result-label {
+  font-weight: 600;
+}
+
+.result-value {
+  font-weight: bold;
 }
 
 input[type="file"] {

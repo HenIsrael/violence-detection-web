@@ -80,12 +80,24 @@ function App() {
         {result && (
           <div className="result-container">
             <h2>Analysis Result</h2>
-            <pre>{JSON.stringify({
-              ...result,
-              predicted_class: result.predicted_class === 'VIOLENCE' ? 'Violence' : 
-                               result.predicted_class === 'NON_VIOLENCE' ? 'No Violence' : 
-                               result.predicted_class
-            }, null, 2)}</pre>
+            <div className="result-content">
+              <div className="result-item">
+                <span className="result-label">Detection:</span>
+                <span className={`result-value ${result.predicted_class === 'VIOLENCE' ? 'violence' : 'no-violence'}`}>
+                  {result.predicted_class === 'VIOLENCE' ? 'Violence' : 
+                   result.predicted_class === 'NON_VIOLENCE' ? 'No Violence' : 
+                   result.predicted_class}
+                </span>
+              </div>
+              <div className="result-item">
+                <span className="result-label">Confidence:</span>
+                <span className="result-value">
+                  {typeof result.confidence === 'number' 
+                    ? `${Math.round(result.confidence * 100)}%` 
+                    : result.confidence}
+                </span>
+              </div>
+            </div>
           </div>
         )}
       </header>
