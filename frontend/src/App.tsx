@@ -55,7 +55,7 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>Violence Detection</h1>
+        <h1>Violence Detection App</h1>
         <div className="upload-container">
           <input
             type="file"
