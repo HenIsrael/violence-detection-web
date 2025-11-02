@@ -1,7 +1,0 @@
-../backend/
-../violence-detection/
-../README.md
-../DEPLOYMENT.md
-../.gitignore
-!frontend/
-
