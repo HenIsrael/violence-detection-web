@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import LinearProgress from '@mui/material/LinearProgress';
 import './App.css';
 
 // Vercel configured to build only when frontend changes
@@ -70,6 +71,13 @@ function App() {
             {uploading ? 'Analyzing...' : 'Analyze Video'}
           </button>
         </div>
+
+        {uploading && (
+          <div className="progress-container">
+            <LinearProgress />
+            <p className="progress-text">Analyzing video...</p>
+          </div>
+        )}
 
         {error && (
           <div className="error-message">

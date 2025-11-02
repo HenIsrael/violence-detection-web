@@ -46,6 +46,19 @@ button:hover:not(:disabled) {
   background-color: #4fa8d3;
 }
 
+.progress-container {
+  margin: 20px 0;
+  width: 100%;
+  max-width: 400px;
+}
+
+.progress-text {
+  margin-top: 15px;
+  color: #61dafb;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
 .error-message {
   color: #ff6b6b;
   margin: 10px 0;
