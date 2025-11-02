@@ -1,22 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import LinearProgress from '@mui/material/LinearProgress';
+import VideoPreview from './components/VideoPreview/VideoPreview';
 import './App.css';
 
 // Vercel configured to build only when frontend changes
 
 function App() {
   const [file, setFile] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<any>(null);
 
+  // Cleanup video preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (videoPreview) {
+        URL.revokeObjectURL(videoPreview);
+      }
+    };
+  }, [videoPreview]);
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
-      setFile(files[0]);
+      const selectedFile = files[0];
+      setFile(selectedFile);
       setError(null);
       setResult(null);
+      
+      // Cleanup previous preview URL if exists
+      if (videoPreview) {
+        URL.revokeObjectURL(videoPreview);
+      }
+      
+      // Create preview URL for video
+      const previewUrl = URL.createObjectURL(selectedFile);
+      setVideoPreview(previewUrl);
     }
   };
 
@@ -108,6 +129,8 @@ function App() {
             </div>
           </div>
         )}
+
+        {videoPreview && <VideoPreview videoUrl={videoPreview} />}
       </header>
     </div>
   );

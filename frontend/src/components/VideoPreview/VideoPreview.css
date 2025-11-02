@@ -1,0 +1,19 @@
+.video-preview-container {
+  margin: 20px 0;
+  padding: 20px;
+  background-color: rgba(97, 218, 251, 0.1);
+  border-radius: 10px;
+  max-width: 80%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.video-preview {
+  width: 100%;
+  max-width: 800px;
+  height: 450px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
