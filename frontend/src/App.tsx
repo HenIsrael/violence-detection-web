@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import './App.css';
 
-// Updated: Vercel configuration added
+// Vercel configured to build only when frontend changes
 
 function App() {
   const [file, setFile] = useState<File | null>(null);
