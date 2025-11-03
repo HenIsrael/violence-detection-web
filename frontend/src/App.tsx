@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import LinearProgress from '@mui/material/LinearProgress';
 import VideoPreview from './components/VideoPreview/VideoPreview';
+import ResultItem from './components/ResultItem/ResultItem';
 import './App.css';
 
 // Vercel configured to build only when frontend changes
@@ -89,7 +90,7 @@ function App() {
             onClick={handleUpload} 
             disabled={!file || uploading}
           >
-            {uploading ? 'Analyzing...' : 'Analyze Video'}
+            Detect
           </button>
         </div>
 
@@ -108,24 +109,15 @@ function App() {
 
         {result && (
           <div className="result-container">
-            <h2>Analysis Result</h2>
             <div className="result-content">
-              <div className="result-item">
-                <span className="result-label">Detection:</span>
-                <span className={`result-value ${result.predicted_class === 'VIOLENCE' ? 'violence' : 'no-violence'}`}>
-                  {result.predicted_class === 'VIOLENCE' ? 'Violence' : 
-                   result.predicted_class === 'NON_VIOLENCE' ? 'No Violence' : 
-                   result.predicted_class}
-                </span>
-              </div>
-              <div className="result-item">
-                <span className="result-label">Confidence:</span>
-                <span className="result-value">
-                  {typeof result.confidence === 'number' 
-                    ? `${Math.round(result.confidence * 100)}%` 
-                    : result.confidence}
-                </span>
-              </div>
+              <ResultItem 
+                label="Prediction:" 
+                value={result.predicted_class === 'VIOLENCE' ? 'Violence' : 'No Violence'}
+              />
+              <ResultItem 
+                label="Confidence:" 
+                value={`${Math.round(result.confidence * 100)}%`} 
+              />
             </div>
           </div>
         )}
