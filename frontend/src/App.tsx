@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import LinearProgress from '@mui/material/LinearProgress';
+import Button from '@mui/material/Button';
 import VideoPreview from './components/VideoPreview/VideoPreview';
-import ResultItem from './components/ResultItem/ResultItem';
+import ResultMessage from './components/ResultMessage/ResultMessage';
 import './App.css';
 
 // Vercel configured to build only when frontend changes
 
 function App() {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -22,6 +24,10 @@ function App() {
       }
     };
   }, [videoPreview]);
+
+  const handleFileButtonClick = () => {
+    fileInputRef.current?.click();
+  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -85,13 +91,24 @@ function App() {
             accept="video/*"
             onChange={handleFileChange}
             disabled={uploading}
+            ref={fileInputRef}
+            style={{ display: 'none' }}
           />
-          <button 
-            onClick={handleUpload} 
+          <Button
+            variant="outlined"
+            onClick={handleFileButtonClick}
+            disabled={uploading}
+            sx={{ mb: 2 }}
+          >
+            Choose Video File
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleUpload}
             disabled={!file || uploading}
           >
             Detect
-          </button>
+          </Button>
         </div>
 
         {uploading && (
@@ -110,13 +127,9 @@ function App() {
         {result && (
           <div className="result-container">
             <div className="result-content">
-              <ResultItem 
-                label="Prediction:" 
-                value={result.predicted_class === 'VIOLENCE' ? 'Violence' : 'No Violence'}
-              />
-              <ResultItem 
-                label="Confidence:" 
-                value={`${Math.round(result.confidence * 100)}%`} 
+              <ResultMessage 
+                predictedClass={result.predicted_class}
+                confidence={result.confidence}
               />
             </div>
           </div>
