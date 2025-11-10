@@ -1,22 +1,21 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-import LinearProgress from '@mui/material/LinearProgress';
-import Button from '@mui/material/Button';
-import VideoPreview from './components/VideoPreview/VideoPreview';
-import ResultMessage from './components/ResultMessage/ResultMessage';
 import './App.css';
+import ElectricHero from './electricXtra/Hero';
+import ResultMessage from './components/ResultMessage/ResultMessage';
 
 // Vercel configured to build only when frontend changes
 
 function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [file, setFile] = useState<File | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<any>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const abortReasonRef = useRef<'user' | null>(null);
 
-  // Cleanup video preview URL on unmount
   useEffect(() => {
     return () => {
       if (videoPreview) {
@@ -26,40 +25,80 @@ function App() {
   }, [videoPreview]);
 
   const handleFileButtonClick = () => {
+    if (analyzing) {
+      return;
+    }
     fileInputRef.current?.click();
+  };
+  const handleGetStarted = () => {
+    handleFileButtonClick();
+  };
+
+  const handleDetect = () => {
+    if (analyzing) {
+      window.alert('Video analysis already in progress.');
+      return;
+    }
+    if (!selectedFile) {
+      window.alert('Please choose a video file first.');
+      return;
+    }
+    const detectorSection = document.getElementById('detector');
+    if (detectorSection) {
+      detectorSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    uploadVideo(selectedFile);
+  };
+
+  const handleTryDifferent = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+
+    if (videoPreview) {
+      URL.revokeObjectURL(videoPreview);
+    }
+
+    setSelectedFile(null);
+    setVideoPreview(null);
+    setError(null);
+
+    if (analyzing && abortControllerRef.current) {
+      abortReasonRef.current = 'user';
+      abortControllerRef.current.abort();
+    } else {
+      setAnalysisResult(null);
+    }
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
       const selectedFile = files[0];
-      setFile(selectedFile);
+      setSelectedFile(selectedFile);
+      setAnalysisResult(null);
       setError(null);
-      setResult(null);
-      
-      // Cleanup previous preview URL if exists
       if (videoPreview) {
         URL.revokeObjectURL(videoPreview);
       }
-      
-      // Create preview URL for video
       const previewUrl = URL.createObjectURL(selectedFile);
       setVideoPreview(previewUrl);
+      // Allow selecting the same file again
+      event.target.value = '';
     }
   };
 
-  const handleUpload = async () => {
-    if (!file) {
-      setError('Please select a file first');
-      return;
-    }
-
-    setUploading(true);
+  const uploadVideo = async (videoFile: File) => {
+    setAnalyzing(true);
     setError(null);
-    setResult(null);
-
+    setAnalysisResult(null);
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    abortReasonRef.current = null;
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', videoFile);
 
     try {
       // Use environment variable for API URL, fallback to localhost for development
@@ -68,74 +107,124 @@ function App() {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        signal: controller.signal,
       });
-      setResult(response.data);
+      setAnalysisResult(response.data);
     } catch (err: any) {
-      if (err.response?.data?.detail) {
-        setError(err.response.data.detail);
+      if (
+        err?.code === 'ERR_CANCELED' ||
+        err?.name === 'CanceledError' ||
+        err?.message === 'canceled'
+      ) {
+        if (abortReasonRef.current === 'user') {
+          setAnalysisResult({
+            predicted_class: 'Prediction stopped',
+            confidence: 0,
+          });
+          setError(null);
+        }
       } else {
-        setError('An error occurred while uploading the file');
+        const message =
+          err.response?.data?.detail ||
+          'An error occurred while uploading the file';
+        console.error(message);
+        window.alert(message);
+        setError(message);
       }
     } finally {
-      setUploading(false);
+      setAnalyzing(false);
+      abortControllerRef.current = null;
+      abortReasonRef.current = null;
     }
   };
 
+  const analysisVisible = Boolean(
+    videoPreview || analyzing || analysisResult || error,
+  );
+
   return (
     <div className="App">
-      <header className="App-header">
-        <h1>Violence Detection App</h1>
-        <div className="upload-container">
-          <input
-            type="file"
-            accept="video/*"
-            onChange={handleFileChange}
-            disabled={uploading}
-            ref={fileInputRef}
-            style={{ display: 'none' }}
-          />
-          <Button
-            variant="outlined"
-            onClick={handleFileButtonClick}
-            disabled={uploading}
-            sx={{ mb: 2 }}
-          >
-            Choose Video File
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleUpload}
-            disabled={!file || uploading}
-          >
-            Detect
-          </Button>
-        </div>
-
-        {uploading && (
-          <div className="progress-container">
-            <LinearProgress />
-            <p className="progress-text">Analyzing video...</p>
-          </div>
-        )}
-
-        {error && (
-          <div className="error-message">
-            {error}
-          </div>
-        )}
-
-        {result && (
-          <div className="result-container">
-            <div className="result-content">
-              <ResultMessage 
-                predictedClass={result.predicted_class}
-                confidence={result.confidence}
-              />
+      <ElectricHero
+        onGetStarted={handleGetStarted}
+        onDetect={handleDetect}
+        detectDisabled={analyzing || !selectedFile}
+      />
+      <header
+        className={`App-header ${analysisVisible ? 'visible' : ''}`}
+        id="detector"
+      >
+        {analysisVisible && (
+          <div className="analysis-console">
+            <div className="console-header">
+              <span className="console-title">Analysis Console</span>
             </div>
+            <div className="console-actions">
+                <span
+                  className={`console-status ${
+                    analyzing
+                      ? 'status-active'
+                      : error
+                      ? 'status-error'
+                      : analysisResult
+                      ? 'status-complete'
+                      : 'status-idle'
+                  }`}
+                >
+                  {analyzing
+                    ? 'Scanning...'
+                    : error
+                    ? 'Error'
+                    : analysisResult
+                    ? 'Completed'
+                    : 'Ready'}
+                </span>
+                <button
+                  type="button"
+                  className="console-reset"
+                  onClick={handleTryDifferent}
+                >
+                  Try Different Video
+                </button>
+              </div>
+            <div className="console-divider" />
+            {analyzing && (
+              <div className="console-progress">
+                <div className="progress-track">
+                  <div className="progress-indicator" />
+                </div>
+                <p className="console-progress-label">Making prediction...</p>
+              </div>
+            )}
+            {analysisResult && (
+              <div className="analysis-result">
+                <ResultMessage
+                  predictedClass={analysisResult.predicted_class}
+                  confidence={analysisResult.confidence}
+                />
+              </div>
+            )}
+            {error && <div className="console-error">{error}</div>}
+            {videoPreview && (
+              <div className="console-video">
+                <video
+                  src={videoPreview}
+                  controls
+                  preload="metadata"
+                  className={analyzing ? 'is-blurred' : ''}
+                />
+              </div>
+            )}
           </div>
         )}
-
-        {videoPreview && <VideoPreview videoUrl={videoPreview} />}
+        <input
+          type="file"
+          accept="video/*"
+          onChange={handleFileChange}
+          disabled={analyzing}
+          ref={fileInputRef}
+          style={{ display: 'none' }}
+          aria-hidden="true"
+        />
       </header>
     </div>
   );
