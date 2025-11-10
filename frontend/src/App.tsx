@@ -33,10 +33,12 @@ function App() {
 
   const scrollToConsole = () => {
     window.requestAnimationFrame(() => {
-      const detectorSection = document.getElementById('detector');
-      if (detectorSection) {
-        detectorSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+      window.requestAnimationFrame(() => {
+        const detectorSection = document.getElementById('detector');
+        if (detectorSection) {
+          detectorSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
     });
   };
 
@@ -55,10 +57,12 @@ function App() {
     }
     const MAX_SIZE = 10 * 1024 * 1024;
     if (selectedFile.size > MAX_SIZE) {
+      setAnalysisResult(null);
       setError('Try smaller video file');
       scrollToConsole();
       return;
     }
+    setError(null);
     scrollToConsole();
     uploadVideo(selectedFile);
   };
@@ -90,17 +94,6 @@ function App() {
     const files = event.target.files;
     if (files && files.length > 0) {
       const candidate = files[0];
-      const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-
-      if (candidate.size > MAX_SIZE) {
-        setSelectedFile(null);
-        setVideoPreview(null);
-        setAnalysisResult(null);
-        setError('Try smaller video file');
-        scrollToConsole();
-        event.target.value = '';
-        return;
-      }
 
       setSelectedFile(candidate);
       setAnalysisResult(null);
