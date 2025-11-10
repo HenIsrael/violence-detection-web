@@ -30,6 +30,16 @@ function App() {
     }
     fileInputRef.current?.click();
   };
+
+  const scrollToConsole = () => {
+    window.requestAnimationFrame(() => {
+      const detectorSection = document.getElementById('detector');
+      if (detectorSection) {
+        detectorSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  };
+
   const handleGetStarted = () => {
     handleFileButtonClick();
   };
@@ -43,10 +53,13 @@ function App() {
       window.alert('Please choose a video file first.');
       return;
     }
-    const detectorSection = document.getElementById('detector');
-    if (detectorSection) {
-      detectorSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const MAX_SIZE = 10 * 1024 * 1024;
+    if (selectedFile.size > MAX_SIZE) {
+      setError('Try smaller video file');
+      scrollToConsole();
+      return;
     }
+    scrollToConsole();
     uploadVideo(selectedFile);
   };
 
@@ -76,14 +89,26 @@ function App() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
-      const selectedFile = files[0];
-      setSelectedFile(selectedFile);
+      const candidate = files[0];
+      const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+
+      if (candidate.size > MAX_SIZE) {
+        setSelectedFile(null);
+        setVideoPreview(null);
+        setAnalysisResult(null);
+        setError('Try smaller video file');
+        scrollToConsole();
+        event.target.value = '';
+        return;
+      }
+
+      setSelectedFile(candidate);
       setAnalysisResult(null);
       setError(null);
       if (videoPreview) {
         URL.revokeObjectURL(videoPreview);
       }
-      const previewUrl = URL.createObjectURL(selectedFile);
+      const previewUrl = URL.createObjectURL(candidate);
       setVideoPreview(previewUrl);
       // Allow selecting the same file again
       event.target.value = '';
