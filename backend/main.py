@@ -1,9 +1,10 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
+from fastapi.responses import Response, FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
 from pydantic import BaseModel
 from gradio_client import Client, handle_file
 from dotenv import load_dotenv
+from pathlib import Path
 import tempfile, os, shutil, time
 
 # Load environment variables from .env file if it exists
@@ -22,20 +23,13 @@ class AnalysisResult(BaseModel):
 # -------------------------------
 app = FastAPI()
 
-# Allow local dev, the original Vercel domain, and any Vercel preview/prod domain
-origins = [
-    "http://localhost:3000",
-    "https://vd-web.vercel.app",
-    "https://violence-detection-web-woad.vercel.app",
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_origin_regex=r"https://.*\.vercel\.app$",
+    allow_origins=["http://localhost:3000"],  # For production, replace with ["http://localhost:3000"]
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # -------------------------------
@@ -43,6 +37,11 @@ app.add_middleware(
 # -------------------------------
 UPLOAD_DIR = os.path.join(tempfile.gettempdir(), "violence_detection_uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# -------------------------------
+# Demo videos directory
+# -------------------------------
+DEMO_VIDEOS_DIR = Path(__file__).parent.parent / "violence-detection" / "movies"
 
 # -------------------------------
 # Routes
@@ -58,6 +57,66 @@ def health_check():
 @app.head("/health")
 def health_check_head():
     return Response(status_code=200)
+
+@app.get("/demo-videos")
+async def list_demo_videos():
+    """List all available demo videos with metadata"""
+    try:
+        videos = []
+        if not DEMO_VIDEOS_DIR.exists():
+            return {"videos": []}
+        
+        for video_file in DEMO_VIDEOS_DIR.glob("*.mp4"):
+            # Categorize based on filename pattern
+            filename = video_file.name
+            if filename.startswith("V_") or filename == "bond.mp4":
+                category = "Violence"
+            elif filename.startswith("NV_"):
+                category = "Non-Violence"
+            else:
+                category = "Other"
+            
+            videos.append({
+                "filename": filename,
+                "category": category,
+                "size": video_file.stat().st_size
+            })
+        
+        # Sort by category (Non-Violence first) then by filename
+        videos.sort(key=lambda x: (x["category"] != "Non-Violence", x["filename"]))
+        
+        return {"videos": videos}
+    except Exception as e:
+        print(f"Error listing demo videos: {e}")
+        raise HTTPException(status_code=500, detail=f"Error listing demo videos: {str(e)}")
+
+@app.get("/demo-videos/{filename}")
+async def get_demo_video(filename: str):
+    """Serve a specific demo video file"""
+    try:
+        # Security: Validate filename to prevent directory traversal
+        if ".." in filename or "/" in filename or "\\" in filename:
+            raise HTTPException(status_code=400, detail="Invalid filename")
+        
+        file_path = DEMO_VIDEOS_DIR / filename
+        
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="Video not found")
+        
+        if not file_path.is_file():
+            raise HTTPException(status_code=400, detail="Invalid file")
+        
+        # Use FileResponse - CORS headers added by middleware
+        return FileResponse(
+            path=file_path,
+            media_type="video/mp4",
+            filename=filename
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error serving demo video: {e}")
+        raise HTTPException(status_code=500, detail=f"Error serving video: {str(e)}")
 
 @app.post("/upload", response_model=AnalysisResult)
 async def upload_video(file: UploadFile = File(...)):

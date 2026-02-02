@@ -3,6 +3,7 @@ import axios from 'axios';
 import './App.css';
 import ElectricHero from './electricXtra/Hero';
 import ResultMessage from './components/ResultMessage/ResultMessage';
+import VideoSelectionModal from './components/VideoSelectionModal/VideoSelectionModal';
 
 // Vercel configured to build only when frontend changes
 
@@ -13,6 +14,7 @@ function App() {
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showVideoSelectionModal, setShowVideoSelectionModal] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const abortReasonRef = useRef<'user' | null>(null);
 
@@ -43,7 +45,75 @@ function App() {
   };
 
   const handleGetStarted = () => {
-    handleFileButtonClick();
+    if (analyzing) {
+      return;
+    }
+    setShowVideoSelectionModal(true);
+  };
+
+  const handleSelectLocalUpload = () => {
+    setShowVideoSelectionModal(false);
+    // Small delay to ensure modal closes smoothly before file dialog opens
+    setTimeout(() => {
+      fileInputRef.current?.click();
+    }, 100);
+  };
+
+  const handleSelectDemoVideo = async (filename: string) => {
+    try {
+      setShowVideoSelectionModal(false);
+      setError(null);
+      
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
+      const videoUrl = `${apiUrl}/demo-videos/${filename}`;
+      console.log(`Loading demo video: ${filename} from ${videoUrl}`);
+      
+      // Use fetch with no-cors mode to get the video, then create a blob from it
+      // Since the video element can load it, we'll use a workaround
+      const response = await fetch(videoUrl, {
+        method: 'GET',
+        mode: 'cors',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      console.log('Demo video loaded successfully, size:', blob.size);
+      
+      // Validate blob
+      if (!blob || blob.size === 0) {
+        throw new Error('Received empty video file');
+      }
+      
+      const file = new File([blob], filename, { type: 'video/mp4' });
+      
+      setSelectedFile(file);
+      setAnalysisResult(null);
+      
+      if (videoPreview) {
+        URL.revokeObjectURL(videoPreview);
+      }
+      
+      const previewUrl = URL.createObjectURL(blob);
+      setVideoPreview(previewUrl);
+      
+      console.log('Demo video preview created successfully');
+    } catch (err: any) {
+      console.error('Error loading demo video:', err);
+      
+      let message = 'Failed to load demo video';
+      
+      if (err.name === 'TypeError' && err.message.includes('Failed to fetch')) {
+        message = 'CORS error - backend may need to be restarted';
+      } else if (err.message) {
+        message = err.message;
+      }
+      
+      setError(message);
+      window.alert(message);
+    }
   };
 
   const handleDetect = () => {
@@ -162,6 +232,12 @@ function App() {
 
   return (
     <div className="App">
+      <VideoSelectionModal
+        isOpen={showVideoSelectionModal}
+        onClose={() => setShowVideoSelectionModal(false)}
+        onSelectLocal={handleSelectLocalUpload}
+        onSelectDemo={handleSelectDemoVideo}
+      />
       <ElectricHero
         onGetStarted={handleGetStarted}
         onDetect={handleDetect}
