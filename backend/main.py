@@ -85,11 +85,8 @@ async def list_demo_videos():
                     "category": "Non-Violence",
                     "size": video_file.stat().st_size
                 })
-        
-        # Sort by category (Non-Violence first) then by filename
-        videos.sort(key=lambda x: (x["category"] != "Non-Violence", x["filename"]))
-        
         return {"videos": videos}
+        
     except Exception as e:
         print(f"Error listing demo videos: {e}")
         raise HTTPException(status_code=500, detail=f"Error listing demo videos: {str(e)}")

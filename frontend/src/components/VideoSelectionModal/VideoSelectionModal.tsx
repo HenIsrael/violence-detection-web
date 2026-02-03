@@ -65,16 +65,6 @@ const VideoSelectionModal: React.FC<VideoSelectionModalProps> = ({
     }
   };
 
-  const getCategoryLabel = (video: DemoVideo) => {
-    const baseName = video.filename.replace('.mp4', '');
-    if (video.category === 'Violence') {
-      return `Violence Example - ${baseName}`;
-    } else if (video.category === 'Non-Violence') {
-      return `Non-Violence Example - ${baseName}`;
-    }
-    return baseName;
-  };
-
   const groupedVideos = demoVideos.reduce((acc, video) => {
     if (!acc[video.category]) {
       acc[video.category] = [];
@@ -166,7 +156,6 @@ const VideoSelectionModal: React.FC<VideoSelectionModalProps> = ({
                               </div>
                             </div>
                             <div className="video-info">
-                              <div className="video-name">{getCategoryLabel(video)}</div>
                               <div className="video-size">{(video.size / 1024 / 1024).toFixed(2)} MB</div>
                             </div>
                           </div>
