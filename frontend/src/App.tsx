@@ -65,7 +65,8 @@ function App() {
       setError(null);
       
       const apiUrl = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
-      const videoUrl = `${apiUrl}/demo-videos/${filename}`;
+      // ADD A TIMESTAMP: This trick forces the browser to bypass the bad cache
+      const videoUrl = `${apiUrl}/demo-videos/${filename}?t=${new Date().getTime()}`
       console.log(`Loading demo video: ${filename} from ${videoUrl}`);
       
       // Use fetch with no-cors mode to get the video, then create a blob from it
