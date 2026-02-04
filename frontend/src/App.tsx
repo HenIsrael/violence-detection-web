@@ -159,6 +159,9 @@ function App() {
     } else {
       setAnalysisResult(null);
     }
+
+    // Open the video selection modal
+    setShowVideoSelectionModal(true);
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
