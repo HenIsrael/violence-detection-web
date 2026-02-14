@@ -5,6 +5,7 @@ import tensorflow as tf
 from pathlib import Path
 import tempfile
 import os
+import traceback
 from enum import Enum
 
 class ViolenceResult(Enum):
@@ -79,71 +80,75 @@ detector = ViolenceDetector()
 print("Model loaded successfully!")
 
 def process_video(video):
+    """
+    Process uploaded video and return detection results.
+    
+    Args:
+        video: Video file from Gradio interface (path string)
+    
+    Returns:
+        Dictionary with detection results or error message
+    """
     try:
-        print(f"=== process_video called at Hugging Face Space ===")
-        print(f"Received type: {type(video)} | value: {repr(video)}")
-
+        print(f"\n{'='*60}")
+        print(f"Processing video request")
+        print(f"Received type: {type(video)}")
+        print(f"Received value: {video}")
+        
         if video is None:
             return {"error": "No video provided"}
 
-        # Handle all formats that Gradio might send
-        if isinstance(video, dict) and "name" in video:
-            video_path = video["name"]
-            print(f"Extracted video path from dict: {video_path}")
-        elif isinstance(video, (list, tuple)) and len(video) > 0:
-            video_path = video[0]
-            print(f"Extracted video path from list: {video_path}")
-        elif isinstance(video, str):
-            video_path = video
-            print(f"Using video path directly: {video_path}")
-        else:
-            return {"error": f"Unsupported video format: {type(video)}"}
+        # Gradio 5.x Video component returns the path as a string
+        video_path = str(video)
+        
+        print(f"Using video path: {video_path}")
 
         if not os.path.exists(video_path):
             return {"error": f"Video file not found: {video_path}"}
 
         print(f"Processing video: {video_path}")
+        
+        # Preprocess and detect
         frames = detector.preprocess_video(video_path)
         result = detector.detect(frames)
-        print(f"Detection result: {result}")
+        
+        print(f"\nDetection Results:")
+        print(f"  - Predicted Class: {result['predicted_class']}")
+        print(f"  - Confidence: {result['confidence']:.2%}")
+        print(f"  - Frames Analyzed: {result['frames_analyzed']}")
+        print(f"{'='*60}\n")
+        
         return result
 
     except Exception as e:
-        import traceback
         traceback.print_exc()
         return {"error": str(e)}
 
-# Create Gradio interface with proper API support
-
+# Create Gradio interface
 iface = gr.Interface(
     fn=process_video,
-    inputs=gr.Video(),
-    outputs=gr.JSON(),
-    title="Video Violence Detection",
-    description="Upload a video to detect presence of violence. Returns predicted_class (0: No Violence, 1: Violence), confidence score, and number of frames analyzed.",
+    inputs=gr.Video(label="Upload Video"),
+    outputs=gr.JSON(label="Detection Results"),
+    title="Video Violence Detection (LRCN Model)",
+    description="Upload a video to detect presence of violence. Returns predicted_class (NON_VIOLENCE or VIOLENCE), confidence score, and number of frames analyzed.",
     examples=[],
     cache_examples=False,
     api_name="predict"
 )
 
-# Launch the interface - Hugging Face Spaces will automatically run this
+# Launch the interface
 # Automatically detect if running on Hugging Face Spaces or locally
-# Hugging Face Spaces sets SPACE_ID environment variable
 is_hf_space = os.getenv("SPACE_ID") is not None
 
 if is_hf_space:
-    # Running on Hugging Face Spaces - use default settings
+    print("Running on Hugging Face Spaces with Gradio 5.49.1")
     iface.launch(
-        show_api=True,  
-        ssr_mode=False,
         share=True
     )
 else:
-    # Running locally - use localhost settings for testing
+    print("Running locally")
     iface.launch(
         server_name="127.0.0.1",
         server_port=7860,
-        show_api=True,  
-        ssr_mode=False,
         share=False
     )
