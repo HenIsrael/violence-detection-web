@@ -158,11 +158,14 @@ async def upload_video(file: UploadFile = File(...)):
         # Use local Gradio app if GRADIO_URL env var is set, otherwise use Hugging Face Space
         gradio_url = os.getenv("GRADIO_URL", "henIsrael/violence-detection")
         print(f"Calling Gradio via gradio_client at: {gradio_url}")
+        
+        # Create client
         client = Client(gradio_url)
         
         print("Sending video for prediction...")
 
-        job = client.submit({"video": handle_file(temp_file_path), "subtitles": None}, api_name="/predict")
+        # Gradio 5.49.1 Interface with gr.Video() expects just the file directly
+        job = client.submit(handle_file(temp_file_path), api_name="/predict")
         result = job.result(timeout=300)
         print(f"Prediction result: {result}")
 
