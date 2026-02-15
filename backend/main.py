@@ -155,8 +155,16 @@ async def upload_video(file: UploadFile = File(...)):
             )
         
         # Use gradio_client - the official way to interact with Gradio Spaces
-        # Use local Gradio app if GRADIO_URL env var is set, otherwise use Hugging Face Space
-        gradio_url = os.getenv("GRADIO_URL", "henIsrael/violence-detection")
+        # Use defaule Gradio app if ACTIVE_MODEL env var is set, otherwise use Hugging Face Space
+        DEFAULT_SPACE = "henIsrael/violence-detection"
+
+        # Two-level lookup with default
+        active_model_key = os.getenv("ACTIVE_MODEL")
+        if active_model_key:
+            gradio_url = os.getenv(active_model_key, DEFAULT_SPACE)
+        else:
+            gradio_url = DEFAULT_SPACE
+        
         print(f"Calling Gradio via gradio_client at: {gradio_url}")
         
         # Create client
